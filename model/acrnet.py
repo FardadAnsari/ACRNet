@@ -23,6 +23,17 @@ class ConvBN(nn.Sequential):
             ('bn', nn.BatchNorm2d(out_planes))
         ]))
 
+class SigmoidQuantization(nn.Module):
+    def __init__(self):
+        super(SigmoidQuantization, self).__init__()
+
+    def forward(self, x):
+        # Apply sigmoid function to output
+        sigmoid_output = torch.sigmoid(x)
+        # Apply thresholding to convert probabilities to binary values
+        binary_output = torch.where(sigmoid_output >= 0.5, torch.tensor(1.0), torch.tensor(0.0))
+        return binary_output
+
 
 class ACRDecoderBlock(nn.Module):
     r""" Inverted residual with extensible width and group conv
@@ -105,6 +116,9 @@ class ACRNet(nn.Module):
         out = self.encoder_feature(x)
         out = self.encoder_fc(out.view(n, -1))
 
+        # Apply sigmoid quantization
+        out = self.sigmoid_quantization(out)
+        
         out = self.decoder_fc(out)
         out = self.decoder_feature(out.view(n, c, h, w))
 
